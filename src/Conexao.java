@@ -14,6 +14,11 @@ public class Conexao implements Runnable {
 
   // socket que vai responder o cliente.
   private Socket clientSocket;
+  private String requestMethod;
+  private String requestPath;
+  private String requestHTTPVersion;
+  private String requestHost;
+  private String requestPort;
 
   // caso nao seja passado um arquivo, o servidor fornece a pagina index.html
   public static String indexHTML = "pages/index.html";
@@ -22,19 +27,30 @@ public class Conexao implements Runnable {
     clientSocket = s;
   }
 
-  // no metodo abaixo sera tratada a comunicacao com o browser
-  public void connectionHandler() {
-    // GET / HTTP/1.1
-    // Host: localhost:8081
-    // Connection: keep-alive
-    // Cache-Control: max-age=0
-    // Upgrade-Insecure-Requests: 1
-    // User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6)
-    // AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36
-    // Accept:
-    // text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
-    // Accept-Encoding: gzip, deflate, br
-    // Accept-Language: pt,en-US;q=0.9,en;q=0.8,ja;q=0.7
+  private void getInfoRequest(String request) {
+    String[] lines = request.split(System.lineSeparator());
+    for (String line : lines) {
+      if (line.contains("GET")) {
+        String[] methodLine = line.split(" ");
+        requestMethod = methodLine[0];
+        requestPath = methodLine[1];
+        requestHTTPVersion = methodLine[2];
+      }
+      if (line.contains("Host: ")) {
+        String[] hostLine = line.split(" ")[1].split(":");
+        requestHost = hostLine[0];
+        requestPort = hostLine[1];
+      }
+    }
+    System.out.println("Metodo: " + requestMethod);
+    System.out.println("Caminho: " + requestPath);
+    System.out.println("HTTP Version: " + requestHTTPVersion);
+    System.out.println("Host: " + requestHost);
+    System.out.println("Port: " + requestPort);
+  }
+
+  private void connectionHandler(String request) {
+    this.getInfoRequest(request);
   }
 
   private String readFile(String path) {
@@ -77,7 +93,7 @@ public class Conexao implements Runnable {
           break;
       }
 
-      System.out.println(request);
+      this.connectionHandler(request);
 
       // Lendo arquivo index.html
       String responseContent = this.readFile(indexHTML);
