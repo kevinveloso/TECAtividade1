@@ -1,3 +1,3 @@
 # Tópicos Especiais em Computação
-## Atividade1
-Implementação de um servidor HTTP simples.
+## Task 1
+A simple HTTP server implementation.
