@@ -9,6 +9,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class Conexao implements Runnable {
 
@@ -20,11 +23,18 @@ public class Conexao implements Runnable {
   private String requestHost;
   private String requestPort;
 
+  private String responseHeader;
+  private String responseContent;
+
   // caso nao seja passado um arquivo, o servidor fornece a pagina index.html
-  public static String indexHTML = "pages/index.html";
+  public static String root = "pages";
 
   public Conexao(Socket s) {
     clientSocket = s;
+  }
+
+  private String getPath(String path) {
+    return path.equals("/") ? root + "/index.html" : root + path;
   }
 
   private void getInfoRequest(String request) {
@@ -42,15 +52,42 @@ public class Conexao implements Runnable {
         requestPort = hostLine[1];
       }
     }
-    System.out.println("Metodo: " + requestMethod);
-    System.out.println("Caminho: " + requestPath);
-    System.out.println("HTTP Version: " + requestHTTPVersion);
-    System.out.println("Host: " + requestHost);
-    System.out.println("Port: " + requestPort);
+    // System.out.println("Metodo: " + requestMethod);
+    // System.out.println("Caminho: " + requestPath);
+    // System.out.println("HTTP Version: " + requestHTTPVersion);
+    // System.out.println("Host: " + requestHost);
+    // System.out.println("Port: " + requestPort);
   }
 
   private void connectionHandler(String request) {
-    this.getInfoRequest(request);
+    try {
+      // Envia para o cliente (browser)
+      OutputStreamWriter out = new OutputStreamWriter(clientSocket.getOutputStream());
+      // Manipula cabeçalho para retirar informacoes importantes
+      this.getInfoRequest(request);
+      // Recupera caminho do arquivo solicitado
+      String requestedFileString = this.getPath(requestPath);
+      // Verificar se o arquivo existe
+      Path requestedFilePath = Paths.get(requestedFileString);
+      if (!Files.exists(requestedFilePath)) {
+        // Nao possui o arquivo solicitado, retorna erro 404
+        responseHeader = "HTTP/1.1 404 NOT FOUND\nContent-type: text/html\n\n";
+        responseContent = this.readFile(this.getPath("/notFound.html"));
+      } else {
+        // ok
+        responseHeader = "HTTP/1.1 200 OK\nContent-type: text/html\n\n";
+        responseContent = this.readFile(requestedFileString);
+      }
+      out.write(responseHeader);
+      out.write(responseContent);
+
+      out.flush();
+      out.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      System.out.println(e.getMessage());
+
+    }
   }
 
   private String readFile(String path) {
@@ -58,7 +95,7 @@ public class Conexao implements Runnable {
 
     try {
       // Lendo arquivo index.html
-      BufferedReader br = new BufferedReader(new FileReader(indexHTML));
+      BufferedReader br = new BufferedReader(new FileReader(path));
       StringBuilder sb = new StringBuilder();
       String lineFile = null;
 
@@ -81,8 +118,6 @@ public class Conexao implements Runnable {
     try {
       // Recebido do cliente (browser)
       BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), "ASCII"));
-      // Envia para o cliente (browser)
-      OutputStreamWriter out = new OutputStreamWriter(clientSocket.getOutputStream());
 
       // Lendo requisicao (header + content)
       String line = null;
@@ -94,25 +129,10 @@ public class Conexao implements Runnable {
       }
 
       this.connectionHandler(request);
-
-      // Lendo arquivo index.html
-      String responseContent = this.readFile(indexHTML);
-
-      System.out.println("Someone connected: ");
-      // Header RESPOSTA (SERVIDOR -> CLIENTE)
-      out.write("HTTP/1.1 200 OK\r\n");
-      out.write("Server: Task1\r\n");
-      out.write("MIME-version: 1.0\r\n");
-      out.write("Content-type: text/html\r\n");
-      out.write("Content-lenght: " + responseContent.length() + "\r\n");
-
-      // Content RESPOSTA (SERVIDOR -> CLIENTE)
-      out.write(responseContent);
-
-      out.flush();
-      out.close();
+      in.close();
     } catch (IOException e) {
       e.printStackTrace();
+      System.out.println(e.getMessage());
     }
   }
 }
