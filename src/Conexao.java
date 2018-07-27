@@ -41,7 +41,7 @@ public class Conexao implements Runnable {
   }
 
   private String getPath(String path) {
-    return path.equals("/") ? "./" + root + "/index.html" : "./" + root + path;
+    return path.equals("/") ? root + "/index.html" : root + path;
   }
 
   private void getInfoRequest(String request) {
@@ -93,9 +93,15 @@ public class Conexao implements Runnable {
     // Recupera caminho do arquivo solicitado
     if (requestPath == null) return;
 
-    // VH
-
-    String requestedFileString = this.getPath(requestPath);
+    // Virtual Host
+    String requestedFileString;
+    if (requestHost.equals("host0.com")) {
+      requestedFileString = this.root + "/host0" + (requestPath.equals("/") ? "/index.html" : requestPath);
+    } else if (requestHost.equals("host1.com")) {
+      requestedFileString = this.root + "/host1" + (requestPath.equals("/") ? "/index.html" : requestPath);
+    } else {
+      requestedFileString = this.getPath(requestPath);
+    }
     Path requestedFilePath = Paths.get(requestedFileString);
 
     // Verificar o metodo solicitado
@@ -112,8 +118,8 @@ public class Conexao implements Runnable {
       responseContent = this.readFile(this.getPath("/notFound.html"));
       responseCode = 404;
     }
-    else if (requestedFilePath.toString().equals("./pages/restrict.html")){
-      try{
+    else if (requestedFilePath.toString().equals(this.root + "/restrict.html")){
+      try {
         if (requestAuthCode == null) {
           responseHeader = "HTTP/1.1 401 OK\nContent-type: text/html\n\n";
           responseContent = "<h1>Erro 401 Unauthorized</h1>";
