@@ -46,18 +46,21 @@ public class Conexao implements Runnable {
 
   private void getInfoRequest(String request) {
     if (request == null) return;
+    
     String[] lines = request.split(System.lineSeparator());
     String[] methodLine = lines[0].split(" ");
     requestMethod = methodLine[0];
     requestPath = methodLine[1];
     requestHTTPVersion = methodLine[2];
+
     for (String line : lines) {
+     
       if (line.startsWith("Host: ")) {
         String[] hostLine = line.split(" ")[1].split(":");
         requestHost = hostLine[0];
         requestPort = hostLine[1];
-      }
-      else if (line.startsWith("Authorization: ")) {
+      
+      } else if (line.startsWith("Authorization: ")) {
         String[] authLine = line.split(" ");
         requestAuthScheme = authLine[1]; // Basic
         requestAuthCode = authLine[2]; // Hash Base64
@@ -86,45 +89,59 @@ public class Conexao implements Runnable {
   }
 
   private void connectionHandler(String request) throws IOException {
-    OutputStreamWriter out = new OutputStreamWriter(clientSocket.getOutputStream());
-    // Manipula cabeçalho para retirar informacoes importantes
-    this.getInfoRequest(request);
+    
+   OutputStreamWriter out = new OutputStreamWriter(clientSocket.getOutputStream());
+    
+   // Manipula cabeçalho para retirar informacoes importantes
+   this.getInfoRequest(request);
 
-    // Recupera caminho do arquivo solicitado
-    if (requestPath == null) return;
+   // Recupera caminho do arquivo solicitado
+   if (requestPath == null) return;
 
-    // Virtual Host
-    String requestedFileString;
-    if (requestHost.equals("host0.com")) {
-      requestedFileString = this.root + "/host0" + (requestPath.equals("/") ? "/index.html" : requestPath);
-    } else if (requestHost.equals("host1.com")) {
-      requestedFileString = this.root + "/host1" + (requestPath.equals("/") ? "/index.html" : requestPath);
-    } else {
-      requestedFileString = this.getPath(requestPath);
-    }
-    Path requestedFilePath = Paths.get(requestedFileString);
+   // Virtual Host
+   String requestedFileString;
+   
+   if (requestHost.equals("host0.com")) {
+    
+     requestedFileString = this.root + "/host0" + (requestPath.equals("/") ? 
+     "/index.html" : requestPath);
+    
+   } else if (requestHost.equals("host1.com")) {
+      
+    requestedFileString = this.root + "/host1" + (requestPath.equals("/") ? 
+    "/index.html" : requestPath);
+    
+   } else {
 
-    // Verificar o metodo solicitado
-    if (!requestMethod.equals("GET")) {
-      // Nao possui o metodo implementado (PUT, POST, DELETE), retorna erro 501
-      responseHeader = "HTTP/1.1 501 Not Implemented\nContent-type: text/html\n\n";
-      responseContent = "<h1>Erro 501 Not Implemented</h1>";
-      responseCode = 501;
-    }
-    // Verificar se o arquivo existe
-    else if (!Files.exists(requestedFilePath)) {
-      // Nao possui o arquivo solicitado, retorna erro 404
-      responseHeader = "HTTP/1.1 404 Not Found\nContent-type: text/html\n\n";
-      responseContent = this.readFile(this.getPath("/notFound.html"));
-      responseCode = 404;
-    }
-    else if (requestedFilePath.toString().equals(this.root + "/restrict.html")){
+     requestedFileString = this.getPath(requestPath); 
+   }
+   
+   Path requestedFilePath = Paths.get(requestedFileString);
+
+   // Verificar o metodo solicitado
+   if (!requestMethod.equals("GET")) {
+     
+     // Nao possui o metodo implementado (PUT, POST, DELETE), retorna erro 501
+     responseHeader = "HTTP/1.1 501 Not Implemented\nContent-type: text/html\n\n";
+     responseContent = "<h1>Erro 501 Not Implemented</h1>";
+     responseCode = 501;
+
+   } // Verificar se o arquivo existe
+   else if (!Files.exists(requestedFilePath)) {
+     
+     // Nao possui o arquivo solicitado, retorna erro 404
+     responseHeader = "HTTP/1.1 404 Not Found\nContent-type: text/html\n\n";
+     responseContent = this.readFile(this.getPath("/notFound.html"));
+     responseCode = 404;
+   
+   } else if (requestedFilePath.toString().equals(this.root + "/restrict.html")){
       try {
         if (requestAuthCode == null) {
           responseHeader = "HTTP/1.1 401 OK\nContent-type: text/html\n\n";
           responseContent = "<h1>Erro 401 Unauthorized</h1>";
           responseCode = 401;
         } else {
+       
           byte[] decodedLoginPassword = Base64.getMimeDecoder().decode(requestAuthCode);
           String requestLoginPassword = new String(decodedLoginPassword);
           
@@ -133,8 +150,8 @@ public class Conexao implements Runnable {
             responseHeader = "HTTP/1.1 200 OK\nContent-type: text/html\n\n";
             responseContent = this.readFile(requestedFileString);
             responseCode = 200;
-          }
-          else {
+
+          } else {
             responseHeader = "HTTP/1.1 401 OK\nContent-type: text/html\n\n";
             responseContent = "<h1>Erro 401 Unauthorized</h1>";
             responseCode = 401;
@@ -147,8 +164,7 @@ public class Conexao implements Runnable {
         responseContent = "<h1>Erro 401 Unauthorized</h1>";
         responseCode = 401;
       }
-    }
-    else {
+    } else {
       responseHeader = "HTTP/1.1 200 OK\nContent-type: text/html\n\n";
       responseContent = this.readFile(requestedFileString);
       responseCode = 200;
@@ -172,8 +188,11 @@ public class Conexao implements Runnable {
       // Lendo requisicao (header + content)
       String line = in.readLine();
       String request = line;
+      
       while ((line = in.readLine()) != null) {
+      
         request = request + "\r\n" + line;
+      
         if (line.length() == 0)
           break;
       }
