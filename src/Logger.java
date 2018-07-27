@@ -18,8 +18,8 @@ public class Logger {
      * 205.160.186.76 unknown – [01/Jan/1996:22:53:58 -0500]
      * “Get /bgs/greenbg.gif HTTP/1.0” 200 50
      */
-    String info = clientAddress + " - [" + currentDate + " " + currentTime + "]\n" +
-                  "\"" + methodLine.substring(0, methodLine.length() - 1) + "\" " + responseCode + " " + request.length();
+    String info = clientAddress + " - [" + currentDate + " " + currentTime + "]\n" + "\""
+        + methodLine.substring(0, methodLine.length() - 1) + "\" " + responseCode + " " + request.length() + "\n\n";
     try {
       File logFile = new File("log_info.txt");
       PrintWriter out = new PrintWriter(new FileOutputStream(logFile, true));
