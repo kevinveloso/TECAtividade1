@@ -12,6 +12,8 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 public class Conexao implements Runnable {
 
@@ -27,8 +29,12 @@ public class Conexao implements Runnable {
   private Integer responseCode;
   private String responseContent;
 
+  private String requestAuthScheme;
+  private String requestAuthCode;
+
   // caso nao seja passado um arquivo, o servidor fornece a pagina index.html
-  public static String root = "pages";
+  private static String root = "pages";
+  private static final String loginPassword = "teste:123";
 
   public Conexao(Socket s) {
     clientSocket = s;
@@ -45,12 +51,16 @@ public class Conexao implements Runnable {
     requestMethod = methodLine[0];
     requestPath = methodLine[1];
     requestHTTPVersion = methodLine[2];
-
     for (String line : lines) {
-      if (line.contains("Host: ")) {
+      if (line.startsWith("Host: ")) {
         String[] hostLine = line.split(" ")[1].split(":");
         requestHost = hostLine[0];
         requestPort = hostLine[1];
+      }
+      else if (line.startsWith("Authorization: ")) {
+        String[] authLine = line.split(" ");
+        requestAuthScheme = authLine[1]; // Basic
+        requestAuthCode = authLine[2]; // Hash Base64
       }
     }
   }
@@ -83,6 +93,8 @@ public class Conexao implements Runnable {
     // Recupera caminho do arquivo solicitado
     if (requestPath == null) return;
 
+    // VH
+
     String requestedFileString = this.getPath(requestPath);
     Path requestedFilePath = Paths.get(requestedFileString);
 
@@ -99,8 +111,38 @@ public class Conexao implements Runnable {
       responseHeader = "HTTP/1.1 404 Not Found\nContent-type: text/html\n\n";
       responseContent = this.readFile(this.getPath("/notFound.html"));
       responseCode = 404;
-    } else {
-      // ok
+    }
+    else if (requestedFilePath.toString().equals("./pages/restrict.html")){
+      try{
+        if (requestAuthCode == null) {
+          responseHeader = "HTTP/1.1 401 OK\nContent-type: text/html\n\n";
+          responseContent = "<h1>Erro 401 Unauthorized</h1>";
+          responseCode = 401;
+        } else {
+          byte[] decodedLoginPassword = Base64.getMimeDecoder().decode(requestAuthCode);
+          String requestLoginPassword = new String(decodedLoginPassword);
+          
+          //Verificar login
+          if (this.loginPassword.equals(requestLoginPassword)) {
+            responseHeader = "HTTP/1.1 200 OK\nContent-type: text/html\n\n";
+            responseContent = this.readFile(requestedFileString);
+            responseCode = 200;
+          }
+          else {
+            responseHeader = "HTTP/1.1 401 OK\nContent-type: text/html\n\n";
+            responseContent = "<h1>Erro 401 Unauthorized</h1>";
+            responseCode = 401;
+          }
+        }
+      }
+      catch(IllegalArgumentException e){
+        e.printStackTrace();
+        responseHeader = "HTTP/1.1 401 OK\nContent-type: text/html\n\n";
+        responseContent = "<h1>Erro 401 Unauthorized</h1>";
+        responseCode = 401;
+      }
+    }
+    else {
       responseHeader = "HTTP/1.1 200 OK\nContent-type: text/html\n\n";
       responseContent = this.readFile(requestedFileString);
       responseCode = 200;
