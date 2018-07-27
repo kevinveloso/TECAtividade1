@@ -24,6 +24,7 @@ public class Conexao implements Runnable {
   private String requestPort;
 
   private String responseHeader;
+  private Integer responseCode;
   private String responseContent;
 
   // caso nao seja passado um arquivo, o servidor fornece a pagina index.html
@@ -52,11 +53,6 @@ public class Conexao implements Runnable {
         requestPort = hostLine[1];
       }
     }
-    // System.out.println("Metodo: " + requestMethod);
-    // System.out.println("Caminho: " + requestPath);
-    // System.out.println("HTTP Version: " + requestHTTPVersion);
-    // System.out.println("Host: " + requestHost);
-    // System.out.println("Port: " + requestPort);
   }
 
   private String readFile(String path) throws IOException {
@@ -95,19 +91,23 @@ public class Conexao implements Runnable {
       // Nao possui o metodo implementado (PUT, POST, DELETE), retorna erro 501
       responseHeader = "HTTP/1.1 501 Not Implemented\nContent-type: text/html\n\n";
       responseContent = "<h1>Erro 501 Not Implemented</h1>";
+      responseCode = 501;
     }
     // Verificar se o arquivo existe
     else if (!Files.exists(requestedFilePath)) {
       // Nao possui o arquivo solicitado, retorna erro 404
       responseHeader = "HTTP/1.1 404 Not Found\nContent-type: text/html\n\n";
       responseContent = this.readFile(this.getPath("/notFound.html"));
+      responseCode = 404;
     } else {
       // ok
       responseHeader = "HTTP/1.1 200 OK\nContent-type: text/html\n\n";
       responseContent = this.readFile(requestedFileString);
+      responseCode = 200;
     }
 
     try {
+      Logger.log(clientSocket, request, responseCode);
       out.write(responseHeader);
       out.write(responseContent);
     } finally {
